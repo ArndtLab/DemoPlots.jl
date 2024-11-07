@@ -3,5 +3,15 @@ uuid = "1f342d77-e470-4fee-b19c-8e8d164daffc"
 authors = ["Tommaso Stentella <stentell@molgen.mpg.de> and contributors"]
 version = "0.1.0"
 
+[deps]
+DemoInfer = "50651ce3-0423-45d2-b99c-8ea4267d2717"
+HistogramBinnings = "8296b526-8b84-45d3-81d6-36727ca56808"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
 [compat]
+DemoInfer = "0.1.0"
+HistogramBinnings = "0.1.0"
+PyPlot = "2.11.5"
+StatsBase = "0.34.3"
 julia = "1.10"
