@@ -1,0 +1,7 @@
+name = "DemoPlots"
+uuid = "1f342d77-e470-4fee-b19c-8e8d164daffc"
+authors = ["Tommaso Stentella <stentell@molgen.mpg.de> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.10"
