@@ -40,7 +40,8 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add(RegistrySpec(url = "https://github.com/ArndtLab/JuliaRegistry.git"))
-          ENV["JULIA_PKG_USE_CLI_GIT"] = true
+      - shell: bash
+        run: ssh-add - <<< "${DEMO_INFER_SSH}"
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
   docs:
