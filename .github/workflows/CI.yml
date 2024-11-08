@@ -40,10 +40,9 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add(RegistrySpec(url = "https://github.com/ArndtLab/JuliaRegistry.git"))
-      - uses: webfactory/ssh-agent@v0.8.0
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: |
-            ${{ secrets.DEMO_INFER_SSH }}
+          ssh-private-key: ${{ secrets.DEMO_INFER_SSH }}
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
   docs:
