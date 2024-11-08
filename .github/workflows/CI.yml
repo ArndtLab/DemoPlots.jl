@@ -42,7 +42,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-          git_cli: false
+          git_cli: true
       - uses: julia-actions/julia-runtest@v1
   docs:
     name: Documentation
