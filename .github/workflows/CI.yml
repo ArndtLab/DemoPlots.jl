@@ -41,6 +41,7 @@ jobs:
       - uses: julia-actions/cache@v2
       - shell: julia --project=docs --color=yes {0}
         run: |
+          ENV["JULIA_PKG_USE_CLI_GIT"] = true
           using Pkg
           Pkg.Registry.add(RegistrySpec(url = "https://github.com/ArndtLab/JuliaRegistry.git"))
       - uses: julia-actions/julia-buildpkg@v1
