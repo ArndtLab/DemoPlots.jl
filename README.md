@@ -10,7 +10,7 @@ with plotting utilities for raw data as well as inference results.
 To use it together with DemoInfer, just add it in the same Julia environment:
 ```julia
 using Pkg
-Pkg.add("DemoInfer")
-using DemoInfer
+Pkg.add("DemoPlots")
+using DemoPlots
 ```
 See the link above and docs for more details.
