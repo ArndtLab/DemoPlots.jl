@@ -39,15 +39,15 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+        with:
+          localregistry: https://github.com/ArndtLab/JuliaRegistry.git
+          git_cli: true
       - shell: julia --project=docs --color=yes {0}
         run: |
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
           Pkg.build("PyPlot")
-      - uses: julia-actions/julia-buildpkg@v1
-        with:
-          localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-          git_cli: true
       - uses: julia-actions/julia-runtest@v1
   docs:
     name: Documentation
