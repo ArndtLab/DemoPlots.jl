@@ -10,8 +10,4 @@ PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
-DemoInfer = "0.1.0"
-HistogramBinnings = "0.1.0"
-PyPlot = "2.11.5"
-StatsBase = "0.34.3"
 julia = "1.10"
