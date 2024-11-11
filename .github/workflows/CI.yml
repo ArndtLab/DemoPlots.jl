@@ -43,8 +43,11 @@ jobs:
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
           git_cli: true
-      - shell: julia --project=docs --color=yes {0}
+      - env:
+          PYTHON: ""
+        shell: julia --project=docs --color=yes {0}
         run: |
+          using Pkg
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
           Pkg.build("PyPlot")
@@ -69,6 +72,7 @@ jobs:
         run: |
           using Pkg
           Pkg.Registry.add("General")
+          Pkg.Registry.add(RegistrySpec(url = "https://github.com/ArndtLab/JuliaRegistry.git"))
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
           Pkg.build("PyPlot")
