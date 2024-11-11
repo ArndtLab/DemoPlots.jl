@@ -43,11 +43,14 @@ jobs:
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
           git_cli: true
-      - env:
+      - name: Setup python and PyPlot
+        env:
           PYTHON: ""
         shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
+          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.instantiate()
           Pkg.build("PyPlot")
       - uses: julia-actions/julia-runtest@v1
   docs:
@@ -59,25 +62,31 @@ jobs:
       statuses: write
     steps:
       - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEMO_INFER_SSH }}
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
       - uses: julia-actions/cache@v2
       - name: Configure doc environment
+        shell: julia --project=docs --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.Registry.add("General")
+      - uses: julia-actions/julia-buildpkg@v1
+        with:
+          localregistry: https://github.com/ArndtLab/JuliaRegistry.git
+          git_cli: true
+      - name: Setup python and PyPlot
         env:
           PYTHON: ""
         shell: julia --project=docs --color=yes {0}
         run: |
           using Pkg
-          Pkg.Registry.add("General")
-          Pkg.Registry.add(RegistrySpec(url = "https://github.com/ArndtLab/JuliaRegistry.git"))
           Pkg.develop(PackageSpec(path=pwd()))
           Pkg.instantiate()
           Pkg.build("PyPlot")
-      - uses: julia-actions/julia-buildpkg@v1
-        with:
-          localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-          git_cli: true
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
