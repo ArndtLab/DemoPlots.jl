@@ -82,12 +82,14 @@ function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
 
     ax.plot(mean_epochs, mean_size; color = color, alpha=alpha, linewidth = linewidth, kwargs...)
     ax.add_patch(err)
+    return nothing
 end
 
 function plot_demography(fit::DemoInfer.FitResult, ax;
     max_t = 1e6, color="tab:red", alpha = 1, linewidth = 1, kwargs...
 )
     plot_demography(get_para(fit), vec(sds(fit)), ax; max_t, color, alpha, linewidth, kwargs...)
+    return nothing
 end
 
 """
