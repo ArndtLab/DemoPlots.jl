@@ -4,7 +4,11 @@ using PyPlot
 using StatsBase, HistogramBinnings
 using DemoInfer
 
-export plot_demography, plot_hist, plot_residuals, plot_naive_residuals, xy, plot_input
+export plot_demography,
+    plot_hist,
+    plot_residuals_sim, plot_residuals_th,
+    plot_chain,
+    xy, plot_input
 
 """
     xy(h::HistogramBinnings.Histogram{T, 1, E}; mode = :density) where {T, E}
@@ -21,19 +25,22 @@ function xy(h::HistogramBinnings.Histogram{T, 1, E}; mode = :density) where {T, 
 end
 
 """
-    plot_demography(para::Vector{T}, stderrors::Vector{T} ax; max_t = 1e6, color="black", alpha = 1, linewidth = 1, kwargs...)
-    plot_demography(fit::DemoInfer.FitResult, ax; max_t = 1e6, color="black", alpha = 1, linewidth = 1, kwargs...)
+    plot_demography(para::Vector{T}, stderrors::Vector{T} ax; kwargs...)
+    plot_demography(fit::DemoInfer.FitResult, ax; kwargs...)
 
 Plot the demographic profile encoded in the parameters inferred by the fit.
 
+`ax` is the pyplot ax where to plot the demographic profile.
+
 # Arguments
-- `para` or `fit`: the fitted parameters (or the fit result) in the form of a TN vector as described in `DemoInfer.jl`
-- `stderrors`: the standard errors of the parameters
-- `ax`: the pyplot axis where to plot the demographic profile
-- `max_t`: the furthest time to plot
-- `color`, `alpha`, `linewidth`, `kwargs...`: the keywords that PyPlot `plot` accepts
+- `max_t = 1e6`: the furthest time to plot
+- `color = "tab:red"`, `alpha = 1`, `linewidth = 1`, `kwargs...`: the keywords that PyPlot `plot` accepts
 """
-function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax; max_t = 1e6, color="black", alpha = 1, linewidth = 1, kwargs...) where {T <: Number}
+function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
+    max_t = 1e6, color="tab:red", alpha = 1, linewidth = 1, 
+    kwargs...
+) where {T <: Number}
+    
     nepochs = length(para)÷2
     para = para[end:-1:2]
     stderrors = stderrors[end:-1:2]
@@ -77,32 +84,37 @@ function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax; max_t = 1e6,
     ax.add_patch(err)
 end
 
-function plot_demography(fit::DemoInfer.FitResult, ax; max_t = 1e6, color="black", alpha = 1, linewidth = 1, kwargs...)
-    plot_demography(fit.para, vec(fit.opt.stderrors), ax; max_t, color, alpha, linewidth, kwargs...)
+function plot_demography(fit::DemoInfer.FitResult, ax;
+    max_t = 1e6, color="tab:red", alpha = 1, linewidth = 1, kwargs...
+)
+    plot_demography(get_para(fit), vec(sds(fit)), ax; max_t, color, alpha, linewidth, kwargs...)
 end
 
 """
-    plot_input(TN; max_t = 1e6, kwargs...)
+    plot_input(TN, ax; max_t = 1e6, kwargs...)
 
 Plot the demographic profile encoded in the parameters `TN` as input.
 
 # Arguments
-- `TN`: the demographic profile, in the form of a TN vector as described in `DemoInfer.jl`
 - `max_t`: the furthest time to plot
 - `kwargs...`: the keywords that PyPlot `plot` accepts
 """
-function plot_input(TN; max_t = 1e6, kwargs...)
+function plot_input(TN, ax; max_t = 1e6, kwargs...)
     if length(TN) > 2
         Ns = reverse(TN[2:2:end])
         Ts = cumsum(reverse(TN[3:2:end]))
         Ts = [0, Ts...]
+        x_ = []
+        y_ = []
         for i in eachindex(Ns[1:end-1])
-            plot([Ts[i], Ts[i+1]], [Ns[i], Ns[i]]; kwargs...)
-            plot([Ts[i+1], Ts[i+1]], [Ns[i], Ns[i+1]]; kwargs...)
+            append!(x_, [Ts[i], Ts[i+1], Ts[i+1]])
+            append!(y_, [Ns[i], Ns[i], Ns[i+1]])
         end
-        plot([Ts[end], max_t], [Ns[end], Ns[end]]; kwargs...)
+        append!(x_, [Ts[end], max_t])
+        append!(y_, [Ns[end], Ns[end]])
+        ax.plot(x_, y_; kwargs...)
     else
-        plot([0, max_t], [TN[2], TN[2]]; kwargs...)
+        ax.plot([0, max_t], [TN[2], TN[2]]; kwargs...)
     end
 end
 
@@ -119,19 +131,19 @@ function plot_hist(h::HistogramBinnings.Histogram{T, 1, E}; kwargs...) where {T,
 end
 
 """
-    plot_residuals(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64; kwargs...)
-    plot_residuals(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64; kwargs...)
+    plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64; kwargs...)
+    plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64; kwargs...)
 
 Plot the residuals of the simulation, with given `fit` result` or `para` as input, 
 with respect to the observed histogram `h_obs`.
 
 Optional arguments are passed to `scatter` from pyplot.
 """
-function plot_residuals(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64; kwargs...)
-    plot_residuals(h_obs, fit.para, μ, ρ; kwargs...)
+function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64; kwargs...)
+    plot_residuals_sim(h_obs, get_para(fit), μ, ρ; kwargs...)
 end
 
-function plot_residuals(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64; kwargs...) where {T <: Number}
+function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64; kwargs...) where {T <: Number}
     h_sim = HistogramBinnings.Histogram(h_obs.edges)
     DemoInfer.get_sim!(para, h_sim, μ, ρ, factor=1)
     residuals = (h_obs.weights .- h_sim.weights) ./ sqrt.(h_obs.weights)
@@ -142,24 +154,39 @@ function plot_residuals(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Floa
 end
 
 """
-    plot_naive_residuals(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64; kwargs...)
-    plot_naive_residuals(h_obs::Histogram, para::Vector{T}, μ::Float64; kwargs...)
+    plot_residuals_th(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64; kwargs...)
+    plot_residuals_th(h_obs::Histogram, para::Vector{T}, μ::Float64; kwargs...)
 
-Plot of residuals between observed histogram `h_obs` and the naive theory.
+Plot of residuals between observed histogram `h_obs` and the theory.
 
-See `plot_residuals` for more details.
+Optional arguments are passed to `scatter` from pyplot.
 """
-function plot_naive_residuals(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64; kwargs...)
-    plot_naive_residuals(h_obs, fit.para, μ; kwargs...)
+function plot_residuals_th(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64; kwargs...)
+    plot_residuals_th(h_obs, get_para(fit), μ; kwargs...)
 end
 
-function plot_naive_residuals(h_obs::Histogram, para::Vector{T}, μ::Float64; kwargs...) where {T <: Number}
+function plot_residuals_th(h_obs::Histogram, para::Vector{T}, μ::Float64; kwargs...) where {T <: Number}
     weights_th = DemoInfer.integral_ws(h_obs.edges[1].edges, μ, para)
     residuals = (h_obs.weights .- weights_th) ./ sqrt.(h_obs.weights)
     x, y = xy(h_obs) 
     x_ = x[(y .!= 0).&(x.>1e0)]
     y_ = residuals[(y .!= 0).&(x.>1e0)]
     scatter(x_, y_; kwargs...)
+end
+
+"""
+    plot_chain(fit::DemoInfer.FitResult, n::Int, ax; kwargs...)
+
+Plot the chain stored in `fit` for parameter `n`-th.
+
+`ax` is the pyplot ax where to plot the chain.
+Optional arguments are passed to `plot` from pyplot.
+"""
+function plot_chain(fit::DemoInfer.FitResult, n::Int, ax; kwargs...)
+    p, sd = get_chain(fit)
+    values = p[n, :]
+    stds = sd[n, :]
+    ax.errorbar(eachindex(values), values, yerr=stds; kwargs...)
 end
 
 end
