@@ -142,16 +142,21 @@ with respect to the observed histogram `h_obs`.
 Optional arguments are passed to `scatter` from pyplot.
 """
 function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64; kwargs...)
-    plot_residuals_sim(h_obs, get_para(fit), μ, ρ; kwargs...)
+    if any(get_para(fit) .<= 0)
+        plot_residuals_th(h_obs, fit, μ; kwargs...)
+    else
+        plot_residuals_sim(h_obs, get_para(fit), μ, ρ; kwargs...)
+    end
 end
 
 function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64; kwargs...) where {T <: Number}
     h_sim = HistogramBinnings.Histogram(h_obs.edges)
     DemoInfer.get_sim!(para, h_sim, μ, ρ, factor=1)
-    residuals = (h_obs.weights .- h_sim.weights) ./ sqrt.(h_obs.weights)
-    x, y = xy(h_obs) 
-    x_ = x[(y .!= 0).&(x.>1e0)]
-    y_ = residuals[(y .!= 0).&(x.>1e0)]
+    residuals = (h_obs.weights .- h_sim.weights) ./ sqrt.(h_obs.weights .+ h_sim.weights)
+    x = midpoints(h_obs.edges[1])
+    mask = (h_obs.weights .> 0) .& (h_sim.weights .> 0)
+    x_ = x[mask .& (x.>1e0)]
+    y_ = residuals[mask .& (x.>1e0)]
     scatter(x_, y_; kwargs...)
 end
 
