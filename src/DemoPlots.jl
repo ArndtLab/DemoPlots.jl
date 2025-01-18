@@ -4,7 +4,7 @@ using PyPlot
 using StatsBase, HistogramBinnings
 using DemoInfer
 
-export plot_demography,
+export plot_demography, plot_remnbps,
     plot_hist,
     plot_residuals_sim, plot_residuals_th,
     plot_chain,
@@ -22,6 +22,69 @@ Return the midpoints and the weights of the histogram `h`.
 function xy(h::HistogramBinnings.Histogram{T, 1, E}; mode = :density) where {T, E}
     hn = StatsBase.normalize(h; mode)
     return midpoints(h.edges[1]), hn.weights
+end
+
+function coalescent(t::Int, TN::Vector)
+    ts = [0;cumsum(reverse(TN[3:2:end-1]))]
+    ns = reverse(TN[2:2:end])
+    pnt = 1
+    c = 0.
+    while (pnt < length(ts)) && (ts[pnt] < t)
+        gens = ts[pnt+1] >= t ? (t - ts[pnt]) : (ts[pnt+1] - ts[pnt])
+        N = ns[pnt]
+        c += gens / 2N
+        pnt += 1
+    end
+    if ts[pnt] < t
+        gens = t - ts[pnt]
+        N = ns[pnt]
+        c += gens / 2N
+        pnt += 1
+    end
+    return exp(-c) / 2ns[pnt-1]
+end
+
+function extbps(t::Float64, TN::Vector)
+    L = Float64(TN[1])
+    ts = [0;cumsum(reverse(TN[3:2:end-1]))]
+    ns = reverse(TN[2:2:end])
+    pnt = 1
+    c = 0.
+    while (pnt < length(ts)) && (ts[pnt] < t)
+        gens = ts[pnt+1] >= t ? (t - ts[pnt]) : (ts[pnt+1] - ts[pnt])
+        N = ns[pnt]
+        c += gens / 2N
+        pnt += 1
+    end
+    if ts[pnt] < t
+        gens = t - ts[pnt]
+        N = ns[pnt]
+        c += gens / 2N
+        pnt += 1
+    end
+    return round(L*exp(-c))
+end
+
+
+"""
+    plot_remnbps(para::Vector, ax; max_t = 1e6, kwargs...)
+
+Plot the remaining number of base pairs as a function of time, given the parameters `para`.
+
+`ax` is a pyplot axis.
+Optional arguments are passed to `plot` and `scatter` from pyplot.
+"""
+function plot_remnbps(para::Vector, ax; max_t = 1e6, kwargs...)
+    x_ = 1:max_t
+    y_ = map(x->DemoPlots.extbps(x, para), x_)
+    stop = findfirst(y_ .== 0)
+    if isnothing(stop)
+        stop = length(x_)
+        @warn "at time $max_t the remaining number of base pairs is still not zero"
+    end
+    ax.plot(x_[1:stop], y_[1:stop]; kwargs...)
+    ax.scatter(x_[stop], y_[stop]; kwargs...)
+    return nothing
 end
 
 """
@@ -139,25 +202,25 @@ end
 Plot the residuals of the simulation, with given `fit` result` or `para` as input, 
 with respect to the observed histogram `h_obs`.
 
-Optional arguments are passed to `scatter` from pyplot.
+Optional arguments are passed to `scatter` from pyplot, `ax` is the pyplot axis.
 """
-function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64; kwargs...)
+function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax; factor = 1, kwargs...)
     if any(get_para(fit) .<= 0)
-        plot_residuals_th(h_obs, fit, μ; kwargs...)
+        plot_residuals_th(h_obs, fit, μ, ax; kwargs...)
     else
-        plot_residuals_sim(h_obs, get_para(fit), μ, ρ; kwargs...)
+        plot_residuals_sim(h_obs, get_para(fit), μ, ρ, ax; factor, kwargs...)
     end
 end
 
-function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64; kwargs...) where {T <: Number}
+function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64, ax; factor = 1, kwargs...) where {T <: Number}
     h_sim = HistogramBinnings.Histogram(h_obs.edges)
-    DemoInfer.get_sim!(para, h_sim, μ, ρ, factor=1)
-    residuals = (h_obs.weights .- h_sim.weights) ./ sqrt.(h_obs.weights .+ h_sim.weights)
+    DemoInfer.get_sim!(para, h_sim, μ, ρ; factor)
+    residuals = (h_obs.weights .- h_sim.weights/factor) ./ sqrt.(h_obs.weights .+ h_sim.weights/factor)
     x = midpoints(h_obs.edges[1])
     mask = (h_obs.weights .> 0) .& (h_sim.weights .> 0)
     x_ = x[mask .& (x.>1e0)]
     y_ = residuals[mask .& (x.>1e0)]
-    scatter(x_, y_; kwargs...)
+    ax.scatter(x_, y_; kwargs...)
 end
 
 """
@@ -166,19 +229,19 @@ end
 
 Plot of residuals between observed histogram `h_obs` and the theory.
 
-Optional arguments are passed to `scatter` from pyplot.
+Optional arguments are passed to `scatter` from pyplot, `ax` is the pyplot axis.
 """
-function plot_residuals_th(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64; kwargs...)
-    plot_residuals_th(h_obs, get_para(fit), μ; kwargs...)
+function plot_residuals_th(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ax; kwargs...)
+    plot_residuals_th(h_obs, get_para(fit), μ, ax; kwargs...)
 end
 
-function plot_residuals_th(h_obs::Histogram, para::Vector{T}, μ::Float64; kwargs...) where {T <: Number}
+function plot_residuals_th(h_obs::Histogram, para::Vector{T}, μ::Float64, ax; kwargs...) where {T <: Number}
     weights_th = DemoInfer.integral_ws(h_obs.edges[1].edges, μ, para)
     residuals = (h_obs.weights .- weights_th) ./ sqrt.(h_obs.weights)
     x, y = xy(h_obs) 
     x_ = x[(y .!= 0).&(x.>1e0)]
     y_ = residuals[(y .!= 0).&(x.>1e0)]
-    scatter(x_, y_; kwargs...)
+    ax.scatter(x_, y_; kwargs...)
 end
 
 """
