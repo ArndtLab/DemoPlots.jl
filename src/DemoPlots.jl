@@ -202,25 +202,28 @@ end
 Plot the residuals of the simulation, with given `fit` result` or `para` as input, 
 with respect to the observed histogram `h_obs`.
 
-Optional arguments are passed to `scatter` from pyplot, `ax` is the pyplot axis.
+# Arguments
+- `factor = 1`: the factor which determines how many times the simulation is repeated
+Further optional arguments are passed to `scatter` from pyplot, `ax` is the pyplot axis.
 """
-function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax; factor = 1, kwargs...)
-    if any(get_para(fit) .<= 0)
-        plot_residuals_th(h_obs, fit, μ, ax; kwargs...)
-    else
-        plot_residuals_sim(h_obs, get_para(fit), μ, ρ, ax; factor, kwargs...)
-    end
+function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax;
+    factor = 1, kwargs...
+)
+    plot_residuals_sim(h_obs, get_para(fit), μ, ρ, ax; factor, kwargs...)
+    return nothing
 end
 
-function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64, ax; factor = 1, kwargs...) where {T <: Number}
-    h_sim = HistogramBinnings.Histogram(h_obs.edges)
-    DemoInfer.get_sim!(para, h_sim, μ, ρ; factor)
-    residuals = (h_obs.weights .- h_sim.weights/factor) ./ sqrt.(h_obs.weights .+ h_sim.weights/factor)
-    x = midpoints(h_obs.edges[1])
-    mask = (h_obs.weights .> 0) .& (h_sim.weights .> 0)
-    x_ = x[mask .& (x.>1e0)]
-    y_ = residuals[mask .& (x.>1e0)]
-    ax.scatter(x_, y_; kwargs...)
+function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64, ax;
+    factor = 1, kwargs...
+) where {T <: Number}
+    if all(para .> 0)
+        h_sim = HistogramBinnings.Histogram(h_obs.edges)
+        DemoInfer.get_sim!(para, h_sim, μ, ρ; factor)
+        residuals = compute_residuals(h_obs, h_sim; fc2 = factor)
+        x = midpoints(h_obs.edges[1])
+        ax.scatter(x, residuals; kwargs...)
+    end
+    return nothing
 end
 
 """
@@ -236,12 +239,10 @@ function plot_residuals_th(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float
 end
 
 function plot_residuals_th(h_obs::Histogram, para::Vector{T}, μ::Float64, ax; kwargs...) where {T <: Number}
-    weights_th = DemoInfer.integral_ws(h_obs.edges[1].edges, μ, para)
-    residuals = (h_obs.weights .- weights_th) ./ sqrt.(h_obs.weights)
-    x, y = xy(h_obs) 
-    x_ = x[(y .!= 0).&(x.>1e0)]
-    y_ = residuals[(y .!= 0).&(x.>1e0)]
-    ax.scatter(x_, y_; kwargs...)
+    residuals = compute_residuals(h_obs, μ, para)
+    x = midpoints(h_obs.edges[1])
+    ax.scatter(x, residuals; kwargs...)
+    return nothing
 end
 
 """
