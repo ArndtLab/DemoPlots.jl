@@ -67,14 +67,18 @@ end
 
 
 """
-    plot_remnbps(para::Vector, ax; max_t = 1e6, kwargs...)
+    plot_remnbps(para::Vector, ax; max_t = 5e6, g = 25, kwargs...)
 
 Plot the remaining number of base pairs as a function of time, given the parameters `para`.
 
 `ax` is a pyplot axis.
-Optional arguments are passed to `plot` and `scatter` from pyplot.
+
+# Arguments
+- `max_t = 5e6`: the furthest time, in generations, at which the coalescent is evaluated
+- `g = 25`: arbitrary scaling factor for a generation
+Further optional arguments are passed to `plot` and `scatter` from pyplot.
 """
-function plot_remnbps(para::Vector, ax; max_t = 1e6, kwargs...)
+function plot_remnbps(para::Vector, ax; max_t = 5e6, g = 25, kwargs...)
     x_ = 1:max_t
     y_ = map(x->DemoPlots.extbps(x, para), x_)
     stop = findfirst(y_ .== 0)
@@ -82,8 +86,8 @@ function plot_remnbps(para::Vector, ax; max_t = 1e6, kwargs...)
         stop = length(x_)
         @warn "at time $max_t the remaining number of base pairs is still not zero"
     end
-    ax.plot(x_[1:stop], y_[1:stop]; kwargs...)
-    ax.scatter(x_[stop], y_[stop]; kwargs...)
+    ax.plot(g*x_[1:stop], y_[1:stop]; kwargs...)
+    ax.scatter(g*x_[stop], y_[stop]; kwargs...)
     return nothing
 end
 
@@ -96,11 +100,12 @@ Plot the demographic profile encoded in the parameters inferred by the fit.
 `ax` is the pyplot ax where to plot the demographic profile.
 
 # Arguments
-- `max_t = 1e6`: the furthest time to plot
-- `color = "tab:red"`, `alpha = 1`, `linewidth = 1`, `kwargs...`: the keywords that PyPlot `plot` accepts
+- `max_t = 5e6`: the furthest time to plot
+- `g = 25`: arbitrary scaling factor for a generation
+Further optional arguments are passed to `plot` from pyplot.
 """
 function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
-    max_t = 1e6, color="tab:red", alpha = 1, linewidth = 1, 
+    max_t = 5e6, g = 25, color="tab:red", alpha = 1, linewidth = 1, 
     kwargs...
 ) where {T <: Number}
     
@@ -141,30 +146,34 @@ function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
     push!(upp_epochs, old_t)
     push!(low_epochs, old_t)
 
-    err = Polygon(collect(zip([upp_epochs;low_epochs[end:-1:1]],[upp_size;low_size[end:-1:1]])),facecolor=color, edgecolor="none",alpha=0.5*alpha)
+    err = Polygon(
+        collect(zip(g*[upp_epochs;low_epochs[end:-1:1]],[upp_size;low_size[end:-1:1]])),
+        facecolor=color, edgecolor="none",alpha=0.5*alpha
+    )
 
-    ax.plot(mean_epochs, mean_size; color = color, alpha=alpha, linewidth = linewidth, kwargs...)
+    ax.plot(g*mean_epochs, mean_size; color = color, alpha=alpha, linewidth = linewidth, kwargs...)
     ax.add_patch(err)
     return nothing
 end
 
 function plot_demography(fit::DemoInfer.FitResult, ax;
-    max_t = 1e6, color="tab:red", alpha = 1, linewidth = 1, kwargs...
+    max_t = 5e6, g = 25, color="tab:red", alpha = 1, linewidth = 1, kwargs...
 )
-    plot_demography(get_para(fit), vec(sds(fit)), ax; max_t, color, alpha, linewidth, kwargs...)
+    plot_demography(get_para(fit), vec(sds(fit)), ax; max_t, g, color, alpha, linewidth, kwargs...)
     return nothing
 end
 
 """
-    plot_input(TN, ax; max_t = 1e6, kwargs...)
+    plot_input(TN, ax; max_t = 5e6, g = 25, kwargs...)
 
 Plot the demographic profile encoded in the parameters `TN` as input.
 
 # Arguments
 - `max_t`: the furthest time to plot
+- `g = 25`: arbitrary scaling factor for a generation
 - `kwargs...`: the keywords that PyPlot `plot` accepts
 """
-function plot_input(TN, ax; max_t = 1e6, kwargs...)
+function plot_input(TN, ax; max_t = 5e6, g = 25, kwargs...)
     if length(TN) > 2
         Ns = reverse(TN[2:2:end])
         Ts = cumsum(reverse(TN[3:2:end]))
@@ -177,9 +186,9 @@ function plot_input(TN, ax; max_t = 1e6, kwargs...)
         end
         append!(x_, [Ts[end], max_t])
         append!(y_, [Ns[end], Ns[end]])
-        ax.plot(x_, y_; kwargs...)
+        ax.plot(g*x_, y_; kwargs...)
     else
-        ax.plot([0, max_t], [TN[2], TN[2]]; kwargs...)
+        ax.plot(g*[0, max_t], [TN[2], TN[2]]; kwargs...)
     end
 end
 
