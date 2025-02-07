@@ -218,13 +218,13 @@ Further optional arguments are passed to `scatter` from pyplot, `ax` is the pypl
 function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax;
     factor = 1, kwargs...
 )
-    plot_residuals_sim(h_obs, get_para(fit), μ, ρ, ax; factor, kwargs...)
-    return nothing
+    return plot_residuals_sim(h_obs, get_para(fit), μ, ρ, ax; factor, kwargs...)
 end
 
 function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64, ax;
     factor = 1, kwargs...
 ) where {T <: Number}
+    residuals = zeros(length(h_obs.weights))
     if all(para .> 0)
         h_sim = HistogramBinnings.Histogram(h_obs.edges)
         DemoInfer.get_sim!(para, h_sim, μ, ρ; factor)
@@ -232,7 +232,7 @@ function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::
         x = midpoints(h_obs.edges[1])
         ax.scatter(x, residuals; kwargs...)
     end
-    return nothing
+    return residuals
 end
 
 """
