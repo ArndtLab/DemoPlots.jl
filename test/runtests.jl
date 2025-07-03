@@ -13,4 +13,7 @@ using DemoInfer, PyPlot, HistogramBinnings, StatsBase
     @test !isnothing(plot_residuals_sim(h, res[end], 2.36e-8, 1e-8, ax))
     @test isnothing(plot_residuals_th(h, res[end], 2.36e-8, ax))
     @test isnothing(plot_demography(res[end], ax))
+    plot_lineages(res[end].para, ax, 1e-8)
+    plot_cumulative_lineages(res[end].para, ax, 1e-8)
+    plot_results(rand(100), res)
 end
