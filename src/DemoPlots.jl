@@ -322,7 +322,7 @@ function plot_results(segments, results::Vector{DemoInfer.FitResult};
     h_ = HistogramBinnings.Histogram(LogEdgeVector(lo = xres_l, hi = 1_000_000, nbins = 200))
     append!(h_, segments)
 
-    for i in 1:nfits #2:nfits+1
+    for i in 1:nfits
         # plot demography
         pars = get_para(results[i])
         stds = sds(results[i])
@@ -351,7 +351,11 @@ function plot_results(segments, results::Vector{DemoInfer.FitResult};
         ax.legend()
         # plot residuals
         ax = fig.add_subplot(py"$(gs23)[$(i-1),0:4]")
-        resf = plot_residuals_sim(h_, pars, mu, rho, ax; s = 5, color=cl, factor = res_fc)
+        # resf = plot_residuals_sim(h_, pars, mu, rho, ax; s = 5, color=cl, factor = res_fc)
+        wo = results[i].opt.h_obs.weights
+        wf = max.(0,results[i].opt.corrected_weights)
+        resf = (wo .- wf) ./ sqrt.(wo .+ wf)
+        scatter(midpoints(h_.edges[1]), resf; s=5, color=cl)
         ax.axhline(0, color="black", linestyle="--")
         ax.set_xscale("log")
         ax.set_xlim(xres_l, 1e6)
