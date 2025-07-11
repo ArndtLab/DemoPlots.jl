@@ -118,7 +118,8 @@ Plot the demographic profile encoded in the parameters inferred by the fit.
 Further optional arguments are passed to `plot` from pyplot.
 """
 function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
-    max_t = 1e7, g = 29, color="tab:red", alpha = 1, linewidth = 1, 
+    max_t = 1e7, g = 29, shift::Float64 = 0., eshift::Float64 = 0., 
+    color="tab:red", alpha = 1, linewidth = 1,
     kwargs...
 ) where {T <: Number}
     
@@ -138,12 +139,12 @@ function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
         append!(low_size, [n-sn,n-sn])
     end
 
-    mean_epochs = [0.]
-    upp_epochs = [0.]
-    low_epochs = [0.]
+    mean_epochs = [shift]
+    upp_epochs = [shift-eshift]
+    low_epochs = [shift-eshift]
     for i in 1:nepochs-1
-        t = sum(para[2:2:end-1][1:i])
-        st = sqrt(sum(stderrors[2:2:end-1][1:i] .^2))
+        t = sum(para[2:2:end-1][1:i]) + shift
+        st = sqrt(sum(stderrors[2:2:end-1][1:i] .^2) + eshift^2)
         append!(mean_epochs, [t,t])
         if (para[1:2:end][i] + stderrors[1:2:end][i]) > (para[1:2:end][i+1] + stderrors[1:2:end][i+1])
             append!(upp_epochs, [t+st,t+st])
@@ -171,9 +172,12 @@ function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
 end
 
 function plot_demography(fit::DemoInfer.FitResult, ax;
-    max_t = 1e7, g = 29, color="tab:red", alpha = 1, linewidth = 1, kwargs...
+    max_t = 1e7, g = 29, shift::Float64 = 0., eshift::Float64 = 0.,
+    color="tab:red", alpha = 1, linewidth = 1, kwargs...
 )
-    plot_demography(get_para(fit), vec(sds(fit)), ax; max_t, g, color, alpha, linewidth, kwargs...)
+    plot_demography(get_para(fit), vec(sds(fit)), ax; 
+        max_t, g, shift, eshift, color, alpha, linewidth, kwargs...
+    )
     return nothing
 end
 
