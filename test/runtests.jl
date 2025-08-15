@@ -13,6 +13,7 @@ using DemoInfer, PyPlot, HistogramBinnings, StatsBase
     _, ax = subplots(figsize=(7, 5))
 
     @test isa(plot_hist(h, s=4, c="blue"), PyPlot.PyObject)
+    @test !isnothing(plot_residuals(res, mu, rho, ax))
     @test !isnothing(plot_residuals_sim(h, res, mu, rho, ax))
     @test isnothing(plot_residuals_th(h, res, mu, ax))
     @test isnothing(plot_demography(res, ax))
