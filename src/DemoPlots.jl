@@ -8,7 +8,7 @@ using PyCall
 export plot_demography, plot_remnbps,
     plot_lineages, plot_cumulative_lineages,
     plot_hist,
-    plot_residuals_sim, plot_residuals_th,
+    plot_residuals_sim, plot_residuals_th, plot_residuals,
     plot_chain,
     plot_results,
     xy, plot_input
@@ -220,6 +220,31 @@ Optional arguments are passed to `scatter` from pyplot.
 function plot_hist(h::HistogramBinnings.Histogram{T, 1, E}; kwargs...) where {T, E}
     x, y = xy(h)
     scatter(x, y; kwargs...)
+end
+
+"""
+    plot_residuals(fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax; kwargs...)
+
+Plot the residuals for the given fit result (output of demoinfer 
+function in DemoInfer.jl).
+
+`kwargs` are passed to `scatter` from PyPlot. Note that the observed histogram
+is stored in `fit`.
+"""
+function plot_residuals(fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax;
+    kwargs...
+)
+    residuals = zeros(length(fit.opt.h_obs.weights))
+    try
+        ws = fit.opt.corrected_weights
+        ws = max.(0,ws)
+        residuals = (fit.opt.h_obs.weights .- ws) ./ sqrt.(fit.opt.h_obs.weights .+ ws)
+        x = midpoints(fit.opt.h_obs.edges[1])
+        ax.scatter(x, residuals; kwargs...)
+    catch
+        @warn "demoinfer result needed, for pre_fit use plot_residuals_th"
+    end
+    return residuals
 end
 
 """
