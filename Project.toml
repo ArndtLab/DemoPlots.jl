@@ -1,7 +1,7 @@
 name = "DemoPlots"
 uuid = "1f342d77-e470-4fee-b19c-8e8d164daffc"
 authors = ["Tommaso Stentella <stentell@molgen.mpg.de> and contributors"]
-version = "0.4.8"
+version = "0.4.9"
 
 [deps]
 DemoInfer = "50651ce3-0423-45d2-b99c-8ea4267d2717"
@@ -13,7 +13,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 julia = "1.10"
-DemoInfer = "0.6.0"
+DemoInfer = "0.7.0"
 HistogramBinnings = "0.1.1"
 MLDs = "0.1.4"
 PyCall = "1.96.4"
