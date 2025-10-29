@@ -2,7 +2,10 @@ module DemoPlots
 
 using PyPlot
 using StatsBase, HistogramBinnings
-using DemoInfer, MLDs
+using HetDister
+using HetDister: FitResult, get_para, sds, compute_residuals, mldsmcp
+using HetDister.Spectra.CoalescentBase: 
+    extbps, lineages, cumulative_lineages
 using PyCall
 
 export plot_demography, plot_remnbps,
@@ -41,7 +44,7 @@ Further optional arguments are passed to `plot` and `scatter` from pyplot.
 """
 function plot_remnbps(para::Vector, ax; max_t = 1e7, g = 29, kwargs...)
     x_ = 1:max_t
-    y_ = map(x->MLDs.CoalescentBase.extbps(x, para), x_)
+    y_ = map(x->extbps(x, para), x_)
     stop = findfirst(y_ .== 0)
     if isnothing(stop)
         stop = length(x_)
@@ -67,7 +70,7 @@ Further optional arguments are passed to `plot` and `scatter` from pyplot.
 """
 function plot_lineages(para::Vector, ax, rho; max_t = 1e7, g = 29, k = 0, kwargs...)
     x_ = 1:max_t
-    y_ = map(x->MLDs.CoalescentBase.lineages(x, rho, para; k = k), x_)
+    y_ = map(x->lineages(x, rho, para; k = k), x_)
     stop = findlast(y_ .> 0.5)
     if isnothing(stop)
         stop = length(x_)
@@ -92,12 +95,13 @@ given the parameters `para`.
 - `k = 0`: the minimum length of associated IBD segment in bp
 Further optional arguments are passed to `plot` and `scatter` from pyplot.
 """
+# TODO: correct CoalescentBase
 function plot_cumulative_lineages(para::Vector, ax, rho; max_t = 1e7, g = 29, k = 0, kwargs...)
     x_ = cumsum(para[end-1:-2:3])
     x_ = [0; x_; max_t]
-    y_ = map(x->MLDs.CoalescentBase.cumulative_lineages(x, para, rho; k = k), x_)
+    y_ = map(x->cumulative_lineages(x, para, rho; k = k), x_)
     y_ = y_[2:end] .- y_[1:end-1]
-    if MLDs.CoalescentBase.lineages(max_t, rho, para; k = k) > 0.5
+    if lineages(max_t, rho, para; k = k) > 0.5
         @warn "at time $max_t the number of lineages is still not zero"
     end
     ax.step(g*x_, [y_;y_[end]]; where = "post", kwargs...)
@@ -117,12 +121,11 @@ Plot the demographic profile encoded in the parameters inferred by the fit.
 - `g = 29`: arbitrary scaling factor for a generation
 Further optional arguments are passed to `plot` from pyplot.
 """
-function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
+function plot_demography(para::Vector, stderrors::Vector, ax;
     max_t = 1e7, g = 29, shift::Float64 = 0., eshift::Float64 = 0., 
     color="tab:red", alpha = 1, linewidth = 1,
     kwargs...
-) where {T <: Number}
-    
+)   
     nepochs = length(para)÷2
     para = para[end:-1:2]
     stderrors = stderrors[end:-1:2]
@@ -171,7 +174,7 @@ function plot_demography(para::Vector{T}, stderrors::Vector{T}, ax;
     return nothing
 end
 
-function plot_demography(fit::DemoInfer.FitResult, ax;
+function plot_demography(fit::FitResult, ax;
     max_t = 1e7, g = 29, shift::Float64 = 0., eshift::Float64 = 0.,
     color="tab:red", alpha = 1, linewidth = 1, kwargs...
 )
@@ -210,113 +213,12 @@ function plot_input(TN, ax; max_t = 1e7, g = 29, kwargs...)
     end
 end
 
-"""
-    plot_hist(h::Histogram; kwargs...)
-
-Plot the histogram `h` using PyPlot.
-
-Optional arguments are passed to `scatter` from pyplot.
-"""
-function plot_hist(h::HistogramBinnings.Histogram{T, 1, E}; kwargs...) where {T, E}
-    x, y = xy(h)
-    scatter(x, y; kwargs...)
-end
-
-"""
-    plot_residuals(fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax; kwargs...)
-
-Plot the residuals for the given fit result (output of demoinfer 
-function in DemoInfer.jl).
-
-`kwargs` are passed to `scatter` from PyPlot. Note that the observed histogram
-is stored in `fit`.
-"""
-function plot_residuals(fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax;
-    kwargs...
-)
-    residuals = zeros(length(fit.opt.h_obs.weights))
-    try
-        ws = fit.opt.corrected_weights
-        ws = max.(0,ws)
-        residuals = (fit.opt.h_obs.weights .- ws) ./ sqrt.(fit.opt.h_obs.weights .+ ws)
-        x = midpoints(fit.opt.h_obs.edges[1])
-        ax.scatter(x, residuals; kwargs...)
-    catch
-        @warn "demoinfer result needed, for pre_fit use plot_residuals_th"
-    end
-    return residuals
-end
-
-"""
-    plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64; kwargs...)
-    plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64; kwargs...)
-
-Plot the residuals of the simulation, with given `fit` result` or `para` as input, 
-with respect to the observed histogram `h_obs`.
-
-# Arguments
-- `factor = 1`: the factor which determines how many times the simulation is repeated
-Further optional arguments are passed to `scatter` from pyplot, `ax` is the pyplot axis.
-"""
-function plot_residuals_sim(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ρ::Float64, ax;
-    factor = 1, kwargs...
-)
-    return plot_residuals_sim(h_obs, get_para(fit), μ, ρ, ax; factor, kwargs...)
-end
-
-function plot_residuals_sim(h_obs::Histogram, para::Vector{T}, μ::Float64, ρ::Float64, ax;
-    factor = 1, kwargs...
-) where {T <: Number}
-    residuals = zeros(length(h_obs.weights))
-    if all(para .> 0)
-        h_sim = HistogramBinnings.Histogram(h_obs.edges)
-        DemoInfer.get_sim!(para, h_sim, μ, ρ; factor)
-        residuals = compute_residuals(h_obs, h_sim; fc2 = factor)
-        x = midpoints(h_obs.edges[1])
-        ax.scatter(x, residuals; kwargs...)
-    end
-    return residuals
-end
-
-"""
-    plot_residuals_th(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64; kwargs...)
-    plot_residuals_th(h_obs::Histogram, para::Vector{T}, μ::Float64; kwargs...)
-
-Plot of residuals between observed histogram `h_obs` and the theory.
-
-Optional arguments are passed to `scatter` from pyplot, `ax` is the pyplot axis.
-"""
-function plot_residuals_th(h_obs::Histogram, fit::DemoInfer.FitResult, μ::Float64, ax; kwargs...)
-    plot_residuals_th(h_obs, get_para(fit), μ, ax; kwargs...)
-end
-
-function plot_residuals_th(h_obs::Histogram, para::Vector{T}, μ::Float64, ax; kwargs...) where {T <: Number}
-    residuals = compute_residuals(h_obs, μ, para)
-    x = midpoints(h_obs.edges[1])
-    ax.scatter(x, residuals; kwargs...)
-    return nothing
-end
-
-"""
-    plot_chain(fit::DemoInfer.FitResult, n::Int, ax; kwargs...)
-
-Plot the chain stored in `fit` for parameter `n`-th.
-
-`ax` is the pyplot ax where to plot the chain.
-Optional arguments are passed to `plot` from pyplot.
-"""
-function plot_chain(fit::DemoInfer.FitResult, n::Int, ax; kwargs...)
-    p, sd = get_chain(fit)
-    values = p[n, :]
-    stds = sd[n, :]
-    ax.errorbar(eachindex(values), values, yerr=stds; kwargs...)
-end
-
-function plot_results(segments, results::Vector{DemoInfer.FitResult}; 
+function plot_results(segments, results::Vector{FitResult}; 
     mu = 2.36e-8, rho = 1e-8, g = 29, 
     clin = "black", cl = "tab:red", evdcl = "navy", othercl = "green",
     Nlow = 1e2, Nhigh = 1e5, xres_l = 30,
     mld_fc = 10, res_fc = 10,
+    order = 10, ndt = 800,
     kwargs...
 )
     nfits = length(results)
@@ -365,12 +267,13 @@ function plot_results(segments, results::Vector{DemoInfer.FitResult};
         ax.set_ylabel(L"N(t)")
         ax.legend(loc = "lower right")
         # plot mld
-        h_sim = HistogramBinnings.Histogram(h.edges)
-        get_sim!(pars, h_sim, mu, rho; factor = mld_fc)
-        x, y_th = xy(h_sim)
+        # h_sim = HistogramBinnings.Histogram(h.edges)
+        # get_sim!(pars, h_sim, mu, rho; factor = mld_fc)
+        # x, y_th = xy(h_sim)
+        y_th = mldsmcp(x, h.edges[1], mu, rho, pars; order, ndt)
         ax = fig.add_subplot(gs22[i])
         ax.scatter(x, ŷ; s=3, color=clin, label="observed")
-        ax.plot(x, y_th/mld_fc; color=cl, label="fit $(length(pars)÷2) epochs", linewidth = 1)
+        ax.plot(x, y_th; color=cl, label="fit $(length(pars)÷2) epochs", linewidth = 1)
         ax.set_xlim(1, 1e6)
         ax.set_ylim(1e-5, 1e5)
         ax.set_xscale("log")
@@ -381,10 +284,12 @@ function plot_results(segments, results::Vector{DemoInfer.FitResult};
         # plot residuals
         ax = fig.add_subplot(py"$(gs23)[$(i-1),0:4]")
         # resf = plot_residuals_sim(h_, pars, mu, rho, ax; s = 5, color=cl, factor = res_fc)
-        wo = results[i].opt.h_obs.weights
-        wf = max.(0,results[i].opt.corrected_weights)
-        resf = (wo .- wf) ./ sqrt.(wo .+ wf)
-        scatter(midpoints(h_.edges[1]), resf; s=5, color=cl)
+        ho = results[i].opt.h_obs
+        wo = ho.weights
+        x = midpoints(ho.edges[1])
+        wf = mldsmcp(x, ho.edges[1], mu, rho, pars; order, ndt) .* diff(ho.edges[1])
+        resf = (wo .- wf) ./ sqrt.(wf)
+        scatter(x, resf; s=5, color=cl)
         ax.axhline(0, color="black", linestyle="--")
         ax.set_xscale("log")
         ax.set_xlim(xres_l, 1e6)
