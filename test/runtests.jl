@@ -30,7 +30,7 @@ using DemoPlots.StatsBase
     xy(h)
     plot_remnbps(get_para(f), ax)
     plot_lineages(get_para(f), ax, rho)
-    # plot_cumulative_lineages(get_para(f), ax, rho)
+    plot_cumulative_lineages(get_para(f), ax, rho)
     plot_demography(f, ax)
     plot_input(TN, ax)
     plot_results(rand(100), [f])

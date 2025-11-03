@@ -5,7 +5,7 @@ using StatsBase, HistogramBinnings
 using HetDister
 using HetDister: FitResult, get_para, sds, compute_residuals, mldsmcp
 using HetDister.Spectra.CoalescentBase: 
-    extbps, lineages, cumulative_lineages
+    extbps, lineages, cumulative_lineages, getts, getns
 using PyCall
 
 export plot_demography, plot_remnbps,
@@ -70,7 +70,7 @@ Further optional arguments are passed to `plot` and `scatter` from pyplot.
 """
 function plot_lineages(para::Vector, ax, rho; max_t = 1e7, g = 29, k = 0, kwargs...)
     x_ = 1:max_t
-    y_ = map(x->lineages(x, rho, para; k = k), x_)
+    y_ = map(x->lineages(x, para, rho; k = k), x_)
     stop = findlast(y_ .> 0.5)
     if isnothing(stop)
         stop = length(x_)
@@ -95,13 +95,12 @@ given the parameters `para`.
 - `k = 0`: the minimum length of associated IBD segment in bp
 Further optional arguments are passed to `plot` and `scatter` from pyplot.
 """
-# TODO: correct CoalescentBase
 function plot_cumulative_lineages(para::Vector, ax, rho; max_t = 1e7, g = 29, k = 0, kwargs...)
     x_ = cumsum(para[end-1:-2:3])
     x_ = [0; x_; max_t]
     y_ = map(x->cumulative_lineages(x, para, rho; k = k), x_)
     y_ = y_[2:end] .- y_[1:end-1]
-    if lineages(max_t, rho, para; k = k) > 0.5
+    if lineages(max_t, para, rho; k = k) > 0.5
         @warn "at time $max_t the number of lineages is still not zero"
     end
     ax.step(g*x_, [y_;y_[end]]; where = "post", kwargs...)
@@ -122,51 +121,80 @@ Plot the demographic profile encoded in the parameters inferred by the fit.
 Further optional arguments are passed to `plot` from pyplot.
 """
 function plot_demography(para::Vector, stderrors::Vector, ax;
-    max_t = 1e7, g = 29, shift::Float64 = 0., eshift::Float64 = 0., 
-    color="tab:red", alpha = 1, linewidth = 1,
+    max_t = 1e7, g = 29, rho = 1e-8, shift::Float64 = 0., eshift::Float64 = 0., 
+    color="tab:red", alpha = 1, alphapatch = 0.5*alpha, linewidth = 1,
     kwargs...
 )   
     nepochs = length(para)÷2
-    para = para[end:-1:2]
-    stderrors = stderrors[end:-1:2]
-    stderrors = map((x,y)->min(x,y), para, stderrors)
-    old_t = max(sum(para[2:2:end-1])+1e4, max_t)
-    
-    Polygon = matplotlib.patches.Polygon
+    vars = stderrors .^ 2
+
+    old_t = max(max_t, getts(para, nepochs) * 2)
+    for i in getts(para, nepochs):10:max_t
+        if lineages(i, para, rho; k = 0) < 0.5
+            old_t = i
+            break
+        end
+    end
+
     mean_size = []
     upp_size = []
     low_size = []
-    for (n,sn) in zip(para[1:2:end], stderrors[1:2:end])
-        append!(mean_size, [n,n])
-        append!(upp_size, [n+sn,n+sn])
-        append!(low_size, [n-sn,n-sn])
-    end
-
-    mean_epochs = [shift]
-    upp_epochs = [shift-eshift]
-    low_epochs = [shift-eshift]
-    for i in 1:nepochs-1
-        t = sum(para[2:2:end-1][1:i]) + shift
-        st = sqrt(sum(stderrors[2:2:end-1][1:i] .^2) + eshift^2)
-        append!(mean_epochs, [t,t])
-        if (para[1:2:end][i] + stderrors[1:2:end][i]) > (para[1:2:end][i+1] + stderrors[1:2:end][i+1])
-            append!(upp_epochs, [t+st,t+st])
+    mean_epochs = []
+    upp_epochs = []
+    low_epochs = []
+    t(i) = getts(para, i) + shift
+    n(i) = getns(para, i)
+    st(i) = sqrt(getts(vars, i) + eshift^2)
+    sn(i) = sqrt(getns(vars, i))
+    push!(mean_epochs, t(1))
+    push!(upp_epochs, t(1) - st(1))
+    push!(low_epochs, t(1) - st(1))
+    push!(mean_size, n(1))
+    push!(upp_size, n(1) + sn(1))
+    push!(low_size, n(1) - sn(1))
+    for i in 2:nepochs
+        append!(mean_epochs, t(i), t(i))
+        append!(mean_size, n(i-1), n(i))
+        # step down or up in the upper confidence boundary
+        if (n(i-1) + sn(i-1)) > (n(i) + sn(i))
+            # cannot be larger than next the epoch itself
+            if i == nepochs
+                t_ = min(t(i) + st(i), old_t)
+            else
+                t_ = min(t(i) + st(i), t(i+1))
+            end
+            append!(upp_epochs, t_, t_)
         else
-            append!(upp_epochs, [t-st,t-st])
+            # cannot be larger than the previous epoch itself
+            t_ = max(t(i) - st(i), t(i-1))
+            append!(upp_epochs, t_ , t_)
         end
-        if (para[1:2:end][i] - stderrors[1:2:end][i]) < (para[1:2:end][i+1] - stderrors[1:2:end][i+1])
-            append!(low_epochs, [t+st,t+st])
+        # step up or down in the lower confidence boundary
+        if (n(i-1) - sn(i-1)) < (n(i) - sn(i))
+            if i == nepochs
+                t_ = min(t(i) + st(i), old_t)
+            else
+                t_ = min(t(i) + st(i), t(i+1))
+            end
+            append!(low_epochs, t_, t_)
         else
-            append!(low_epochs, [t-st,t-st])
+            t_ = max(t(i) - st(i), t(i-1))
+            append!(low_epochs, t_, t_)
         end
+        append!(upp_size, n(i-1) + sn(i-1), n(i) + sn(i))
+        append!(low_size, n(i-1) - sn(i-1), n(i) - sn(i))
     end
     push!(mean_epochs, old_t)
+    push!(mean_size, n(nepochs))
     push!(upp_epochs, old_t)
     push!(low_epochs, old_t)
-
+    push!(upp_size, n(nepochs) + sn(nepochs))
+    push!(low_size, n(nepochs) - sn(nepochs))
+    
+    Polygon = matplotlib.patches.Polygon
     err = Polygon(
         collect(zip(g*[upp_epochs;low_epochs[end:-1:1]],[upp_size;low_size[end:-1:1]])),
-        facecolor=color, edgecolor="none",alpha=0.5*alpha
+        facecolor=color, edgecolor="none",alpha=alphapatch
     )
 
     ax.plot(g*mean_epochs, mean_size; color = color, alpha=alpha, linewidth = linewidth, kwargs...)
@@ -175,11 +203,11 @@ function plot_demography(para::Vector, stderrors::Vector, ax;
 end
 
 function plot_demography(fit::FitResult, ax;
-    max_t = 1e7, g = 29, shift::Float64 = 0., eshift::Float64 = 0.,
-    color="tab:red", alpha = 1, linewidth = 1, kwargs...
+    max_t = 1e7, g = 29, rho = 1e-8, shift::Float64 = 0., eshift::Float64 = 0.,
+    color="tab:red", alpha = 1, alphapatch = 0.5*alpha, linewidth = 1, kwargs...
 )
     plot_demography(get_para(fit), vec(sds(fit)), ax; 
-        max_t, g, shift, eshift, color, alpha, linewidth, kwargs...
+        max_t, g, rho, shift, eshift, color, alpha, alphapatch, linewidth, kwargs...
     )
     return nothing
 end
