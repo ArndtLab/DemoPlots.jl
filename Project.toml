@@ -1,6 +1,6 @@
 name = "DemoPlots"
 uuid = "1f342d77-e470-4fee-b19c-8e8d164daffc"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Tommaso Stentella <stentell@molgen.mpg.de> and contributors"]
 
 [deps]

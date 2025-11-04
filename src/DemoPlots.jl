@@ -118,20 +118,42 @@ Plot the demographic profile encoded in the parameters inferred by the fit.
 # Arguments
 - `max_t = 1e7`: the furthest time to plot
 - `g = 29`: arbitrary scaling factor for a generation
+- `rho = 1e-8`: recombination rate per bp per generation
+- `shift::Float64 = 0.`: shift in generations to apply to the epoch
+- `eshift::Float64 = 0.`: additional error to add in quadrature to the 
+  standard errors of the epochs
+- `color="tab:red"`: color of the line
+- `alpha = 1`: transparency of the line
+- `alphapatch = 0.5*alpha`: transparency of the confidence interval patch
+- `linewidth = 1`: line width
+- `endcoalwidth = 1`: line width of the vertical lines indicating
+  when expected coalescing lineages per gen drop below 0.5
+  and the number of uncoalesced base pairs drop below 1
+- `plotendcoal = false`: if true the above vertical lines are plotted
 Further optional arguments are passed to `plot` from pyplot.
 """
 function plot_demography(para::Vector, stderrors::Vector, ax;
     max_t = 1e7, g = 29, rho = 1e-8, shift::Float64 = 0., eshift::Float64 = 0., 
     color="tab:red", alpha = 1, alphapatch = 0.5*alpha, linewidth = 1,
+    endcoalwidth = 1, plotendcoal = false,
     kwargs...
 )   
     nepochs = length(para)÷2
     vars = stderrors .^ 2
 
-    old_t = max(max_t, getts(para, nepochs) * 2)
-    for i in getts(para, nepochs):10:max_t
-        if lineages(i, para, rho; k = 0) < 0.5
-            old_t = i
+    old_t = max(2*getts(para, nepochs), max_t)
+
+    endline = 0
+    for i in 1:10:max_t
+        if lineages(i, para, rho; k = 0) > 0.5
+            endline = i
+        end
+    end
+
+    endbp = max_t
+    for i in 1:10:max_t
+        if extbps(i, para) < 1
+            endbp = i
             break
         end
     end
@@ -199,15 +221,20 @@ function plot_demography(para::Vector, stderrors::Vector, ax;
 
     ax.plot(g*mean_epochs, mean_size; color = color, alpha=alpha, linewidth = linewidth, kwargs...)
     ax.add_patch(err)
+    if plotendcoal
+        ax.vlines(g*endline, 1, 1e9; color="white", linewidth=endcoalwidth)
+        ax.vlines(g*endbp, 1, 1e9; color="white", linewidth=endcoalwidth)
+    end
     return nothing
 end
 
 function plot_demography(fit::FitResult, ax;
     max_t = 1e7, g = 29, rho = 1e-8, shift::Float64 = 0., eshift::Float64 = 0.,
-    color="tab:red", alpha = 1, alphapatch = 0.5*alpha, linewidth = 1, kwargs...
+    color="tab:red", alpha = 1, alphapatch = 0.5*alpha, linewidth = 1,
+    endcoalwidth = 1, plotendcoal = false, kwargs...
 )
     plot_demography(get_para(fit), vec(sds(fit)), ax; 
-        max_t, g, rho, shift, eshift, color, alpha, alphapatch, linewidth, kwargs...
+        max_t, g, rho, shift, eshift, color, alpha, alphapatch, linewidth, endcoalwidth, plotendcoal, kwargs...
     )
     return nothing
 end
