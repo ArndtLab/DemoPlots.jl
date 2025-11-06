@@ -143,18 +143,20 @@ function plot_demography(para::Vector, stderrors::Vector, ax;
 
     old_t = max(2*getts(para, nepochs), max_t)
 
-    endline = 0
-    for i in 1:10:max_t
-        if lineages(i, para, rho; k = 0) > 0.5
-            endline = i
+    if plotendcoal
+        endline = 0
+        for i in 1:10:max_t
+            if lineages(i, para, rho; k = 0) > 0.5
+                endline = i
+            end
         end
-    end
 
-    endbp = max_t
-    for i in 1:10:max_t
-        if extbps(i, para) < 1
-            endbp = i
-            break
+        endbp = max_t
+        for i in 1:10:max_t
+            if extbps(i, para) < 1
+                endbp = i
+                break
+            end
         end
     end
 

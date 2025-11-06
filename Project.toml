@@ -1,6 +1,6 @@
 name = "DemoPlots"
 uuid = "1f342d77-e470-4fee-b19c-8e8d164daffc"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Tommaso Stentella <stentell@molgen.mpg.de> and contributors"]
 
 [deps]
@@ -11,7 +11,7 @@ PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
-HetDister = "0.10.0"
+HetDister = "0.10"
 HistogramBinnings = "0.1.1"
 PyCall = "1.96.4"
 PyPlot = "2.11.6"
