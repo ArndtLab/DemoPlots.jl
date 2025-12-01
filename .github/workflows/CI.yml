@@ -30,9 +30,6 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v4
-      - uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.DEMO_INFER_SSH }}
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -41,7 +38,6 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-          git_cli: true
       - name: Setup python and PyPlot
         env:
           PYTHON: ""
@@ -61,9 +57,6 @@ jobs:
       statuses: write
     steps:
       - uses: actions/checkout@v4
-      - uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.DEMO_INFER_SSH }}
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
@@ -76,7 +69,6 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-          git_cli: true
       - name: Setup python and PyPlot
         env:
           PYTHON: ""
