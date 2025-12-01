@@ -38,15 +38,10 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-      - name: Setup python and PyPlot
-        env:
-          PYTHON: ""
-        shell: julia --project=docs --color=yes {0}
+      - name: Set up system Python for PyCall
         run: |
-          using Pkg
-          Pkg.develop(PackageSpec(path=pwd()))
-          Pkg.instantiate()
-          Pkg.build("PyPlot")
+          export PYTHON=$(which python3)
+          julia -e 'using Pkg; ENV["PYTHON"] = ENV["PYTHON"]; Pkg.build("PyCall"); Pkg.build("PyPlot")'
       - uses: julia-actions/julia-runtest@v1
   docs:
     name: Documentation
@@ -69,15 +64,10 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-      - name: Setup python and PyPlot
-        env:
-          PYTHON: ""
-        shell: julia --project=docs --color=yes {0}
+      - name: Set up system Python for PyCall
         run: |
-          using Pkg
-          Pkg.develop(PackageSpec(path=pwd()))
-          Pkg.instantiate()
-          Pkg.build("PyPlot")
+          export PYTHON=$(which python3)
+          julia --project=docs --color=yes {0} -e 'using Pkg; ENV["PYTHON"] = ENV["PYTHON"]; Pkg.build("PyCall"); Pkg.build("PyPlot")'
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
