@@ -41,7 +41,7 @@ jobs:
       - name: Set up system Python for PyCall
         run: |
           export PYTHON=$(which python3)
-          julia -e 'using Pkg; ENV["PYTHON"] = ENV["PYTHON"]; Pkg.build("PyCall"); Pkg.build("PyPlot")'
+          julia -e 'using Pkg; ENV["PYTHON"] = ENV["PYTHON"]; Pkg.build("PyPlot")'
       - uses: julia-actions/julia-runtest@v1
   docs:
     name: Documentation
@@ -67,7 +67,7 @@ jobs:
       - name: Set up system Python for PyCall
         run: |
           export PYTHON=$(which python3)
-          julia --project=docs --color=yes {0} -e 'using Pkg; ENV["PYTHON"] = ENV["PYTHON"]; Pkg.build("PyCall"); Pkg.build("PyPlot")'
+          julia --project=docs -e 'using Pkg; ENV["PYTHON"] = ENV["PYTHON"]; Pkg.build("PyPlot")'
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
