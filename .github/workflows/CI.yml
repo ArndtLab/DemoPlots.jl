@@ -46,7 +46,7 @@ jobs:
         run: python -m pip install --user matplotlib
       - name: Rebuild PyCall to use system Python
         run: | 
-          julia -e 'import Pkg; ENV["PYTHON"]=readchomp(`which python`); println("Using python: ", ENV["PYTHON"]); Pkg.build("PyCall"); Pkg.precompile()'
+          julia -e --project=docs 'import Pkg; ENV["PYTHON"]=readchomp(`which python`); println("Using python: ", ENV["PYTHON"]); Pkg.build("PyCall"); Pkg.precompile()'
       - uses: julia-actions/julia-runtest@v1
   docs:
     name: Documentation
