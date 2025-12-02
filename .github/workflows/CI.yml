@@ -69,10 +69,15 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
-      - name: Set up system Python for PyCall
-        run: |
-          export PYTHON=$(which python3)
-          julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); ENV["PYTHON"] = "/usr/bin/python3"; Pkg.instantiate(); Pkg.build("PyCall"); Pkg.build("PyPlot")'
+      - name: Setup system Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install matplotlib (system python)
+        run: python -m pip install --user matplotlib
+      - name: Rebuild PyCall to use system Python
+        run: | 
+          julia --project=docs -e 'import Pkg; ENV["PYTHON"]=readchomp(`which python`); println("Using python: ", ENV["PYTHON"]); Pkg.build("PyCall"); Pkg.precompile()'
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
