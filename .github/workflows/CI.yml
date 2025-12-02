@@ -77,7 +77,7 @@ jobs:
         run: python -m pip install --user matplotlib
       - name: Rebuild PyCall to use system Python
         run: | 
-          julia --project=docs -e 'import Pkg; ENV["PYTHON"]=readchomp(`which python`); println("Using python: ", ENV["PYTHON"]); Pkg.build("PyCall"); Pkg.precompile()'
+          julia --project=docs -e 'import Pkg; ENV["PYTHON"]=readchomp(`which python`); println("Using python: ", ENV["PYTHON"]); Pkg.add("PyCall"); Pkg.build("PyCall"); Pkg.precompile()'
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
