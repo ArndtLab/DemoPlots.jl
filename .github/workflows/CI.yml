@@ -39,7 +39,7 @@ jobs:
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
       - name: Setup system Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - name: Install matplotlib (system python)
@@ -70,7 +70,7 @@ jobs:
         with:
           localregistry: https://github.com/ArndtLab/JuliaRegistry.git
       - name: Setup system Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - name: Install matplotlib (system python)
